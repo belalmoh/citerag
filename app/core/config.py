@@ -38,4 +38,16 @@ class Settings(BaseSettings):
     enable_reranker: bool = True
 
 
-settings = Settings()
+_settings: Settings | None = None
+
+
+def get_settings() -> Settings:
+    """Return cached settings instance, creating it on first call."""
+    global _settings
+    if _settings is None:
+        _settings = Settings()
+    return _settings
+
+
+# Legacy module-level alias — prefer get_settings() for lazy init
+settings = get_settings()

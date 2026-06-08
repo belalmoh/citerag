@@ -15,7 +15,7 @@ dependencies = [
     "alembic>=1.14.0",
     "qdrant-client>=1.13.0",
     "redis>=5.2.0",
-    "celery>=5.4.0",
+    "celery>=5.3,<6.0",
     "unstructured[pdf]>=0.16.0",
     "python-magic>=0.4.27",
     "sentence-transformers>=3.4.0",
@@ -30,6 +30,8 @@ dependencies = [
     "langchain>=0.3.0",
     "langchain-community>=0.3.0",
     "tiktoken>=0.9.0",
+    "qdrant-client>=1.12.0",
+    "pymupdf>=1.27.2.3",
 ]
 
 [project.optional-dependencies]
