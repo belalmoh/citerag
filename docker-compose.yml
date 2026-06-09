@@ -1,10 +1,7 @@
-version: "3.8"
-
+# docker-compose.yml
 services:
   postgres:
-    image: pgvector/pgvector:pg16
-    container_name: citerag-postgres
-    restart: unless-stopped
+    image: postgres:16-alpine
     environment:
       POSTGRES_USER: citerag
       POSTGRES_PASSWORD: citerag
@@ -16,21 +13,17 @@ services:
 
   qdrant:
     image: qdrant/qdrant:latest
-    container_name: citerag-qdrant
-    restart: unless-stopped
     ports:
-      - "6333:6333"
-      - "6334:6334"
+      - "6333:6333"   # REST API
+      - "6334:6334"   # gRPC (not used yet)
     volumes:
-      - qdrantdata:/qdrant/storage
+      - qdrant_data:/qdrant/storage
 
   redis:
     image: redis:7-alpine
-    container_name: citerag-redis
-    restart: unless-stopped
     ports:
       - "6379:6379"
 
 volumes:
   pgdata:
-  qdrantdata:
+  qdrant_data:

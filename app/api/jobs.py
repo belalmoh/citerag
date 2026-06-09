@@ -21,6 +21,6 @@ async def get_job(document_id: UUID, db: AsyncSession = Depends(get_db)):
 
     return {
         "document_id": str(document_id),
-        "status": document.status.value,
+        "status": document.status,
         "filename": document.filename,
     }

@@ -34,7 +34,7 @@ class DocumentRead(DocumentBase):
     status: ProcessingStatus
     filepath: str
     filesizebytes: int
-    metadata_: dict = Field(alias="metadata", default_factory=dict)
+    metadata_: dict = Field(default_factory=dict)
     created_at: datetime
     updated_at: datetime
 
@@ -45,7 +45,7 @@ class DocumentUpdate(BaseModel):
     """Payload for partially updating a document."""
 
     status: ProcessingStatus | None = None
-    metadata_: dict | None = Field(alias="metadata", default=None)
+    metadata_: dict | None = Field(default=None)
 
     model_config = {"populate_by_name": True}
 

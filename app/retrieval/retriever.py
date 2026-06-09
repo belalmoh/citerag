@@ -18,7 +18,7 @@ class Retriever:
     def __init__(self, indexer: Indexer):
         self._indexer = indexer
 
-    async def search(self, query_vector: list[float], top_k: int, score_threshold: float):
+    async def search(self, query_vector: list[float], top_k: int, score_threshold: float = 0.0):
         from qdrant_client import models
 
         response = await self._indexer._client.query_points(

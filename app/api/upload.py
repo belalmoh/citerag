@@ -29,20 +29,20 @@ async def upload_document(file: UploadFile = File(...), db: AsyncSession = Depen
     upload_dir.mkdir(exist_ok=True)
     file_path = upload_dir / f"{uuid4()}_{file.filename}"
 
-    await asyncio.to_thread(file_path.write_text, content)
+    await asyncio.to_thread(file_path.write_text, str(content))
 
     doc = Document(
-        filename=file_path,
-        content=file.content_type or "application/octet-stream",
-        filepath=file_path,
-        filesizebytes=file.content_length or 0,
-        status=ProcessingStatus.PENDING,
+        filename=file.filename or "unknown",
+        content_type=file.content_type or "application/octet-stream",
+        filepath=str(file_path),
+        filesizebytes=file.size or 0,
+        status=ProcessingStatus.PENDING.value,
     )
 
     db.add(doc)
     await db.commit()
     await db.refresh(doc)
 
-    process_document.delay(str(file_path))
+    process_document.delay(str(doc.id), str(file_path))
 
-    return {"status": "pending", "message": "Upload endpoint stub"}
+    return doc

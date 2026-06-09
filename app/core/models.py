@@ -118,6 +118,8 @@ class QueryLogs(TimestampMixin, Base):
     )
     latency_ms: Mapped[int] = mapped_column(Integer, nullable=False)
     model_used: Mapped[str] = mapped_column(String, nullable=False)
+    prompt_tokens: Mapped[int] = mapped_column(Integer, nullable=False)
+    completion_tokens: Mapped[int] = mapped_column(Integer, nullable=False)
 
     feedback: Mapped[Feedback | None] = relationship(
         back_populates="query_log",  # ← back_populates, not backref

@@ -18,10 +18,11 @@ class Settings(BaseSettings):
     # Redis
     redis_url: str = "redis://localhost:6379/0"
 
-    # LLM
+    # LLM / Ollama (OpenAI-compatible API)
     openai_api_key: str = ""
-    openai_embedding_model: str = "text-embedding-3-small"
-    openai_chat_model: str = "gpt-4o-mini"
+    openai_base_url: str = "http://localhost:11434/v1"
+    openai_embedding_model: str = "nomic-embed-text:latest"
+    openai_chat_model: str = "gemma4:31b-cloud"
 
     # Local fallback
     local_embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"

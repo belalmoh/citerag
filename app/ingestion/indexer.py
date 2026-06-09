@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from uuid import UUID, uuid5
 from typing import Sequence
 
 from qdrant_client import AsyncQdrantClient, models
@@ -45,7 +46,7 @@ class Indexer:
             raise ValueError("chunks and embeddings length mismatch")
         if not chunks:
             return []
-        vector_ids = [f"{chunk.metadata['document_id']}_{chunk.index}" for chunk in chunks]
+        vector_ids = [str(uuid5(UUID(chunk.metadata["document_id"]), str(chunk.index))) for chunk in chunks]
         await self._client.upsert(
             collection_name=self._collection_name,
             points=[

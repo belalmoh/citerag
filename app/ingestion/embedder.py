@@ -13,6 +13,8 @@ MODEL_DIMENSIONS: dict[str, int] = {
     "text-embedding-3-small": 1536,
     "all-MiniLM-L6-v2": 384,
     "sentence-transformers/all-MiniLM-L6-v2": 384,
+    "nomic-embed-text:latest": 768,
+    "nomic-embed-text": 768,
 }
 
 BATCH_SIZE = 100
@@ -41,14 +43,19 @@ class Embedder(ABC):
 
 
 class OpenAIEmbedder(Embedder):
-    """OpenAI embedding client with manual batching and retry logic."""
+    """OpenAI-compatible embedding client (works with Ollama too)."""
 
-    def __init__(self, model: str = "text-embedding-3-large") -> None:
+    def __init__(
+        self,
+        model: str = "text-embedding-3-large",
+        base_url: str | None = None,
+        api_key: str | None = None,
+    ) -> None:
         from openai import AsyncOpenAI
 
         self.model = model
         self._dimension = MODEL_DIMENSIONS.get(model, 0)
-        self._client = AsyncOpenAI()
+        self._client = AsyncOpenAI(base_url=base_url, api_key=api_key)
 
     @property
     def dimension(self) -> int:

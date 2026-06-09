@@ -47,7 +47,7 @@ async def query_documents(
     
     # 2. Retrieving from Qdrant
     retriever = Retriever(indexer)
-    chunks = await retriever.retrieve(query_vec, top_k=body.top_k)
+    chunks = await retriever.search(query_vec, top_k=body.top_k)
 
     # 3. Building the prompt for the LLM
     prompt = PromptBuilder().build(question=body.query, chunks=chunks)
@@ -60,8 +60,8 @@ async def query_documents(
 
     # 5. Log to DB
     log = QueryLogs(
-        query=body.query,
-        response=result.text,
+        query_text=body.query,
+        response_text=result.text,
         model_used=result.model,
         prompt_tokens=result.prompt_tokens,
         completion_tokens=result.completion_tokens,
@@ -75,10 +75,10 @@ async def query_documents(
         response=result.text,
         sources=[
             SourceItem(
-                chunk_id=chunk.id,
-                filename=chunk.metadata.get("filename", "unknown"),
+                chunk_id=chunk.chunk_id,
+                filename=chunk.filename,
                 score=chunk.score,
-                snippet=chunk.metadata.get("text", "")[:200]  # First 200 chars
+                snippet=chunk.content[:200]  # First 200 chars
             )
             for chunk in chunks
         ],

@@ -20,10 +20,11 @@ class LLMResponse(BaseModel):
     completion_tokens: int
 
 class LLMClient:
-    def __init__(self, model: str):
+    def __init__(self, model: str = None):
         settings = get_settings()
-        self.model = model or settings.openai_chat_model
-        self._client = AsyncOpenAI()
+        if model is None:
+            self.model = model or settings.openai_chat_model
+        self._client = AsyncOpenAI(base_url=settings.openai_base_url, api_key=settings.openai_api_key)
 
     async def generate(self, user_message: str, system_prompt: str | None = None, temperature: float = 0.1, max_tokens: int = 1024) -> LLMResponse:
         

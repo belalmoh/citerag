@@ -14,8 +14,9 @@ from app.ingestion.parser import DocumentParser
 
 logger = logging.getLogger(__name__)
 
-celery_app = Celery("citerag")
+celery_app = Celery("citerag", broker="redis://localhost:6379/0")
 
+MAX_RETRIES = 3
 
 class IngestionPipeline:
     """Orchestrates the full async pipeline: parse → chunk → embed → index."""
@@ -82,7 +83,11 @@ def process_document(self, document_id: str, file_path: str) -> dict | None:
     settings = get_settings()
 
     async def _pipeline() -> list[str]:
-        embedder = OpenAIEmbedder(model=settings.openai_embedding_model)
+        embedder = OpenAIEmbedder(
+            model=settings.openai_embedding_model,
+            base_url=settings.openai_base_url,
+            api_key=settings.openai_api_key,
+        )
         from qdrant_client import AsyncQdrantClient
 
         client = AsyncQdrantClient(url=settings.qdrant_url)
@@ -102,7 +107,7 @@ def process_document(self, document_id: str, file_path: str) -> dict | None:
             await session.execute(
                 update(Document)
                 .where(Document.id == document_id)
-                .values(status=ProcessingStatus(status))
+                .values(status=ProcessingStatus(status).value)
             )
             await session.commit()
 

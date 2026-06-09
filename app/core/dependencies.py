@@ -12,7 +12,11 @@ from app.ingestion.indexer import Indexer
 @functools.lru_cache(maxsize=1)
 def get_embedder() -> Embedder:
     settings = get_settings()
-    return OpenAIEmbedder(model=settings.openai_embedding_model)
+    return OpenAIEmbedder(
+        model=settings.openai_embedding_model,
+        base_url=settings.openai_base_url,
+        api_key=settings.openai_api_key,
+    )
 
 @functools.lru_cache(maxsize=1)
 def get_qdrant_client() -> AsyncQdrantClient:
