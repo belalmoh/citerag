@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CiteRAG — Architecture & Component Flow</title>
+<style>
+  :root {
+    --bg: #0b0f19;
+    --surface: #131a2b;
+    --surface2: #1a2340;
+    --border: #243050;
+    --text: #e2e8f0;
+    --text2: #94a3b8;
+    --accent: #60a5fa;
+    --accent2: #a78bfa;
+    --green: #34d399;
+    --orange: #fb923c;
+    --red: #f87171;
+    --pink: #f472b6;
+    --yellow: #fbbf24;
+    --cyan: #22d3ee;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  /* ── Hero ─────────────────────────────────── */
+  .hero {
+    text-align: center;
+    padding: 80px 24px 60px;
+    background: radial-gradient(ellipse 80% 60% at 50% -20%, rgba(96,165,250,0.12), transparent);
+    border-bottom: 1px solid var(--border);
+  }
+  .hero h1 {
+    font-size: 3.2rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    background: linear-gradient(135deg, var(--accent), var(--accent2), var(--cyan));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .hero .subtitle {
+    margin-top: 12px;
+    font-size: 1.15rem;
+    color: var(--text2);
+    max-width: 600px;
+    margin-inline: auto;
+  }
+  .hero .badges {
+    margin-top: 24px;
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .badge {
+    padding: 6px 16px;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .badge.green { color: var(--green); border-color: rgba(52,211,153,0.3); }
+  .badge.blue  { color: var(--accent); border-color: rgba(96,165,250,0.3); }
+  .badge.purple{ color: var(--accent2); border-color: rgba(167,139,250,0.3); }
+  .badge.orange{ color: var(--orange); border-color: rgba(251,146,60,0.3); }
+
+  /* ── Layout ───────────────────────────────── */
+  .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+  section { padding: 64px 0; }
+  section + section { border-top: 1px solid var(--border); }
+  .section-title {
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    letter-spacing: -0.02em;
+  }
+  .section-desc {
+    color: var(--text2);
+    margin-bottom: 32px;
+    font-size: 0.95rem;
+  }
+
+  /* ── Mermaid wrapper ──────────────────────── */
+  .mermaid-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 32px 16px;
+    overflow-x: auto;
+    margin-bottom: 24px;
+  }
+  .mermaid-wrap svg { max-width: 100%; }
+
+  /* ── Component Cards ──────────────────────── */
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 28px;
+    transition: border-color 0.2s, transform 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+  }
+  .card.ingest::before  { background: linear-gradient(90deg, var(--green), var(--cyan)); }
+  .card.retrieve::before{ background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+  .card.generate::before{ background: linear-gradient(90deg, var(--accent2), var(--pink)); }
+  .card.eval::before    { background: linear-gradient(90deg, var(--orange), var(--yellow)); }
+  .card.infra::before   { background: linear-gradient(90deg, var(--text2), var(--accent)); }
+  .card .icon {
+    font-size: 2rem;
+    margin-bottom: 12px;
+  }
+  .card h3 {
+    font-size: 1.15rem;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .card .criticality {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 10px;
+  }
+  .criticality.critical { background: rgba(248,113,113,0.15); color: var(--red); }
+  .criticality.high     { background: rgba(251,146,60,0.15); color: var(--orange); }
+  .criticality.medium   { background: rgba(96,165,250,0.15); color: var(--accent); }
+  .criticality.support  { background: rgba(148,163,184,0.12); color: var(--text2); }
+  .card p { color: var(--text2); font-size: 0.88rem; }
+  .card .depends {
+    margin-top: 14px;
+    font-size: 0.78rem;
+    color: var(--text2);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .card .depends span {
+    background: var(--surface2);
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 0.72rem;
+  }
+
+  /* ── Flow steps ───────────────────────────── */
+  .flow-steps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0;
+    align-items: center;
+    justify-content: center;
+    margin: 32px 0;
+  }
+  .flow-step {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 20px;
+    text-align: center;
+    min-width: 100px;
+  }
+  .flow-step .num {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .flow-step .name {
+    font-weight: 700;
+    font-size: 0.9rem;
+    margin-top: 4px;
+  }
+  .flow-step .file {
+    font-size: 0.7rem;
+    color: var(--text2);
+    font-family: 'SF Mono', monospace;
+  }
+  .flow-arrow {
+    color: var(--accent);
+    font-size: 1.4rem;
+    padding: 0 8px;
+    font-weight: 300;
+  }
+
+  /* ── Two-column ───────────────────────────── */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+    align-items: start;
+  }
+  @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
+
+  /* ── Importance meter ─────────────────────── */
+  .importance-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 6px 0;
+  }
+  .importance-bar .label {
+    width: 100px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-align: right;
+    flex-shrink: 0;
+  }
+  .importance-bar .track {
+    flex: 1;
+    height: 8px;
+    background: var(--surface2);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .importance-bar .fill {
+    height: 100%;
+    border-radius: 999px;
+  }
+
+  /* ── Footer ───────────────────────────────── */
+  .footer {
+    text-align: center;
+    padding: 40px 24px;
+    color: var(--text2);
+    font-size: 0.8rem;
+    border-top: 1px solid var(--border);
+  }
+
+  /* ── Tab switcher ─────────────────────────── */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 24px;
+    background: var(--surface);
+    border-radius: 12px;
+    padding: 4px;
+    width: fit-content;
+  }
+  .tab {
+    padding: 8px 20px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    color: var(--text2);
+    transition: all 0.2s;
+  }
+  .tab.active {
+    background: var(--surface2);
+    color: var(--text);
+  }
+  .tab:hover { color: var(--text); }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ HERO ═══════════════ -->
+<div class="hero">
+  <h1>CiteRAG Architecture</h1>
+  <p class="subtitle">
+    Production-grade RAG system — parse, chunk, embed, index, retrieve, generate, evaluate.
+    Every component mapped with its criticality to the pipeline.
+  </p>
+  <div class="badges">
+    <span class="badge green">FastAPI</span>
+    <span class="badge blue">Qdrant</span>
+    <span class="badge purple">OpenAI</span>
+    <span class="badge orange">Celery</span>
+    <span class="badge green">PostgreSQL</span>
+    <span class="badge blue">Redis</span>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ═══════════════ 1. HIGH-LEVEL DATA FLOW ═══════════════ -->
+<section>
+  <h2 class="section-title">🔁 End-to-End Data Flow</h2>
+  <p class="section-desc">
+    Two primary pipelines power CiteRAG: <strong>Ingestion</strong> (documents in → vectors stored)
+    and <strong>Query</strong> (question in → cited answer out). Click each tab to explore.
+  </p>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('ingestion')">📥 Ingestion Pipeline</button>
+    <button class="tab" onclick="switchTab('query')">🔍 Query Pipeline</button>
+    <button class="tab" onclick="switchTab('full')">🗺️ Full System</button>
+  </div>
+
+  <div class="tab-panel active" id="tab-ingestion">
+    <div class="mermaid-wrap">
+      <div class="mermaid">
+graph LR
+    U["👤 User<br/>Uploads File"] -->|"POST /upload"| API["📡 FastAPI<br/>upload.py"]
+    API -->|"Save to disk"| DISK[("💾 Local Disk<br/>/uploads/")]
+    API -->|"INSERT doc row"| PG[("🐘 PostgreSQL<br/>documents table")]
+    API -->|"Dispatch task"| CELERY["⚡ Celery Worker<br/>worker.py"]
+
+    CELERY -->|"Step 1"| PARSER["📄 DocumentParser<br/>parser.py"]
+    PARSER -->|"Extracted text"| CHUNKER["✂️ Chunker<br/>chunker.py"]
+    CHUNKER -->|"List of Chunks"| EMBEDDER["🧮 OpenAIEmbedder<br/>embedder.py"]
+    EMBEDDER -->|"Vector embeddings"| INDEXER["🗂️ Indexer<br/>indexer.py"]
+    INDEXER -->|"Upsert points"| QDRANT[("🔮 Qdrant<br/>Vector DB")]
+    INDEXER -->|"Update status"| PG
+
+    style U fill:#1a2340,stroke:#60a5fa,color:#e2e8f0
+    style API fill:#1a2340,stroke:#60a5fa,color:#e2e8f0
+    style DISK fill:#1a2340,stroke:#34d399,color:#e2e8f0
+    style PG fill:#1a2340,stroke:#34d399,color:#e2e8f0
+    style CELERY fill:#1a2340,stroke:#fb923c,color:#e2e8f0
+    style PARSER fill:#1a2340,stroke:#22d3ee,color:#e2e8f0
+    style CHUNKER fill:#1a2340,stroke:#22d3ee,color:#e2e8f0
+    style EMBEDDER fill:#1a2340,stroke:#a78bfa,color:#e2e8f0
+    style INDEXER fill:#1a2340,stroke:#a78bfa,color:#e2e8f0
+    style QDRANT fill:#1a2340,stroke:#f472b6,color:#e2e8f0
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="tab-query">
+    <div class="mermaid-wrap">
+      <div class="mermaid">
+graph LR
+    Q["👤 User Asks Question"] -->|"POST /query"| API["📡 FastAPI query.py"]
+
+    API -->|"1. Embed query"| EMB["🧮 OpenAIEmbedder embedder.py"]
+    EMB -->|"Query vector"| RET["🔍 Retriever retriever.py"]
+    RET -->|"Search Qdrant"| QDRANT[("🔮 Qdrant Vector DB")]
+    QDRANT -->|"Top-K chunks"| RET
+
+    RET -->|"SearchResults"| PB["📝 PromptBuilder prompt_builder.py"]
+    PB -->|"Cited prompt"| LLM["🤖 LLMClient llm_client.py"]
+    LLM -->|"GPT-4o-mini"| OPENAI[("☁️ OpenAI API")]
+    OPENAI -->|"Generated answer"| LLM
+
+    LLM -->|"LLMResponse"| API
+    API -->|"Log query"| PG[("🐘 PostgreSQL query_logs")]
+    API -->|"Response + sources"| U2["👤 User Gets Cited Answer"]
+
+    U2 -->|"Thumbs up/down"| FB["💬 Feedback feedback.py"]
+    FB -->|"Store rating"| PG
+
+    style Q fill:#1a2340,stroke:#60a5fa,color:#e2e8f0
+    style API fill:#1a2340,stroke:#60a5fa,color:#e2e8f0
+    style EMB fill:#1a2340,stroke:#a78bfa,color:#e2e8f0
+    style RET fill:#1a2340,stroke:#60a5fa,color:#e2e8f0
+    style QDRANT fill:#1a2340,stroke:#f472b6,color:#e2e8f0
+    style PB fill:#1a2340,stroke:#22d3ee,color:#e2e8f0
+    style LLM fill:#1a2340,stroke:#fbbf24,color:#e2e8f0
+    style OPENAI fill:#1a2340,stroke:#fbbf24,color:#e2e8f0
+    style PG fill:#1a2340,stroke:#34d399,color:#e2e8f0
+    style U2 fill:#1a2340,stroke:#60a5fa,color:#e2e8f0
+    style FB fill:#1a2340,stroke:#fb923c,color:#e2e8f0
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="tab-full">
+    <div class="mermaid-wrap">
+      <div class="mermaid">
+graph TB
+    subgraph INGEST["Ingestion Pipeline"]
+        direction LR
+        UP["POST /upload"] --> PARSE["DocumentParser"]
+        PARSE --> CHNK["Chunker"]
+        CHNK --> EMBD["OpenAIEmbedder"]
+        EMBD --> IDX["Indexer"]
+    end
+
+    subgraph STORE["Storage Layer"]
+        PGDB[("PostgreSQL")]
+        QDB[("Qdrant")]
+        RDB[("Redis")]
+    end
+
+    subgraph QRY["Query Pipeline"]
+        direction LR
+        QP["POST /query"] --> QEMB["Embed Query"]
+        QEMB --> RTRV["Retriever"]
+        RTRV --> PRB["PromptBuilder"]
+        PRB --> LLMC["LLMClient"]
+    end
+
+    subgraph EVL["Evaluation"]
+        FBK["Feedback API"]
+        RGAS["RAGAS Eval"]
+        JDG["LLM Judge"]
+    end
+
+    UP --> PGDB
+    IDX --> QDB
+    IDX --> PGDB
+    RTRV --> QDB
+    QP --> PGDB
+    FBK --> PGDB
+    LLMC -->|"OpenAI"| CLD[("Cloud")]
+
+    style INGEST fill:#0f1a2e,stroke:#34d399,color:#e2e8f0
+    style STORE fill:#0f1a2e,stroke:#a78bfa,color:#e2e8f0
+    style QRY fill:#0f1a2e,stroke:#60a5fa,color:#e2e8f0
+    style EVL fill:#0f1a2e,stroke:#fb923c,color:#e2e8f0
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ 2. COMPONENT DEEP-DIVE ═══════════════ -->
+<section>
+  <h2 class="section-title">🧩 Component Importance Map</h2>
+  <p class="section-desc">
+    Each component rated by <strong>pipeline criticality</strong> — what breaks if it fails,
+    and how central it is to the RAG quality.
+  </p>
+
+  <div class="cards">
+
+    <!-- Indexer -->
+    <div class="card infra">
+      <div class="icon">🗂️</div>
+      <span class="criticality critical">Critical — Tier 0</span>
+      <h3>Indexer</h3>
+      <p>
+        The <strong>single point of truth</strong> between your documents and retrieval.
+        Owns Qdrant collection lifecycle (create, upsert, delete). Every chunk lives or dies here.
+        If the Indexer is down, <em>zero</em> queries can be answered — retrieval has nothing to search.
+      </p>
+      <div class="importance-bar">
+        <span class="label">Criticality</span>
+        <div class="track"><div class="fill" style="width:100%;background:var(--red)"></div></div>
+      </div>
+      <div class="depends">
+        Depends on: <span>AsyncQdrantClient</span><span>Chunk</span><span>embeddings</span>
+      </div>
+    </div>
+
+    <!-- Embedder -->
+    <div class="card ingest">
+      <div class="icon">🧮</div>
+      <span class="criticality critical">Critical — Tier 0</span>
+      <h3>Embedder</h3>
+      <p>
+        Converts raw text into the mathematical representation that makes semantic search possible.
+        Without embeddings, there is no "R" in RAG. Uses <code>text-embedding-3-large</code> (3072-dim)
+        with manual batching and exponential-backoff retry. <strong>Quality of embeddings = quality of retrieval.</strong>
+      </p>
+      <div class="importance-bar">
+        <span class="label">Criticality</span>
+        <div class="track"><div class="fill" style="width:100%;background:var(--red)"></div></div>
+      </div>
+      <div class="depends">
+        Depends on: <span>OpenAI API</span><span>AsyncOpenAI</span>
+      </div>
+    </div>
+
+    <!-- Retriever -->
+    <div class="card retrieve">
+      <div class="icon">🔍</div>
+      <span class="criticality critical">Critical — Tier 0</span>
+      <h3>Retriever</h3>
+      <p>
+        The bridge between a user's question and relevant knowledge. Queries Qdrant with HNSW
+        approximate nearest-neighbor search (ef=128). Returns ranked <code>SearchResult</code> objects
+        with scores, content, and source metadata. <strong>Garbage retrieval = garbage answers,</strong>
+        no matter how good your LLM is.
+      </p>
+      <div class="importance-bar">
+        <span class="label">Criticality</span>
+        <div class="track"><div class="fill" style="width:100%;background:var(--red)"></div></div>
+      </div>
+      <div class="depends">
+        Depends on: <span>Indexer</span><span>Qdrant</span><span>query_vector</span>
+      </div>
+    </div>
+
+    <!-- Chunker -->
+    <div class="card ingest">
+      <div class="icon">✂️</div>
+      <span class="criticality high">High — Tier 1</span>
+      <h3>Chunker</h3>
+      <p>
+        Structure-aware splitting powered by LangChain's <code>RecursiveCharacterTextSplitter</code>.
+        Protects tables, code blocks, and lists from being split mid-structure using placeholder markers.
+        <strong>Chunk size &amp; overlap directly control retrieval precision vs. context completeness.</strong>
+        Default: 1000-char chunks with 200-char overlap.
+      </p>
+      <div class="importance-bar">
+        <span class="label">Criticality</span>
+        <div class="track"><div class="fill" style="width:85%;background:var(--orange)"></div></div>
+      </div>
+      <div class="depends">
+        Depends on: <span>LangChain</span><span>parsed text</span>
+      </div>
+    </div>
+
+    <!-- DocumentParser -->
+    <div class="card ingest">
+      <div class="icon">📄</div>
+      <span class="criticality high">High — Tier 1</span>
+      <h3>DocumentParser</h3>
+      <p>
+        The entry point for all knowledge. Uses <strong>pymupdf</strong> to handle PDF, DOCX, XLSX, PPTX,
+        EPUB, and more. Extracts text, tables, and page-level metadata. Async-aware — offloads
+        blocking I/O to a thread pool. <strong>If parsing fails, nothing downstream matters.</strong>
+      </p>
+      <div class="importance-bar">
+        <span class="label">Criticality</span>
+        <div class="track"><div class="fill" style="width:85%;background:var(--orange)"></div></div>
+      </div>
+      <div class="depends">
+        Depends on: <span>pymupdf</span><span>file I/O</span>
+      </div>
+    </div>
+
+    <!-- LLMClient -->
+    <div class="card generate">
+      <div class="icon">🤖</div>
+      <span class="criticality high">High — Tier 1</span>
+      <h3>LLMClient</h3>
+      <p>
+        Generates the final answer from retrieved context. Uses <strong>GPT-4o-mini</strong> with
+        exponential-backoff retry (3 attempts). Enforces a strict system prompt: <em>"answer ONLY
+        from provided context, don't make up facts."</em> This is where hallucination is prevented.
+      </p>
+      <div class="importance-bar">
+        <span class="label">Criticality</span>
+        <div class="track"><div class="fill" style="width:80%;background:var(--orange)"></div></div>
+      </div>
+      <div class="depends">
+        Depends on: <span>OpenAI API</span><span>PromptBuilder</span>
+      </div>
+    </div>
+
+    <!-- PromptBuilder -->
+    <div class="card generate">
+      <div class="icon">📝</div>
+      <span class="criticality high">High — Tier 1</span>
+      <h3>PromptBuilder</h3>
+      <p>
+        Constructs the citation-enforced prompt. Wraps each chunk with numbered citations <code>[1], [2]</code>
+        and appends source filenames. The system prompt demands <em>"Cite your sources by referring to
+        chunk numbers."</em> This is the <strong>citation integrity layer</strong> — without it, answers
+        lose traceability.
+      </p>
+      <div class="importance-bar">
+        <span class="label">Criticality</span>
+        <div class="track"><div class="fill" style="width:75%;background:var(--orange)"></div></div>
+      </div>
+      <div class="depends">
+        Depends on: <span>SearchResult[]</span>
+      </div>
+    </div>
+
+    <!-- IngestionPipeline -->
+    <div class="card ingest">
+      <div class="icon">⚡</div>
+      <span class="criticality high">High — Tier 1</span>
+      <h3>IngestionPipeline (Worker)</h3>
+      <p>
+        The <strong>orchestrator</strong> that sequences parse → chunk → embed → index.
+        Runs as a Celery task with 3 retries. Bridges Celery's sync world to the async pipeline
+        via <code>asyncio.run()</code>. Without this, documents never make it to the vector store.
+      </p>
+      <div class="importance-bar">
+        <span class="label">Criticality</span>
+        <div class="track"><div class="fill" style="width:80%;background:var(--orange)"></div></div>
+      </div>
+      <div class="depends">
+        Depends on: <span>Celery</span><span>Parser</span><span>Chunker</span><span>Embedder</span><span>Indexer</span>
+      </div>
+    </div>
+
+    <!-- Query API -->
+    <div class="card retrieve">
+      <div class="icon">📡</div>
+      <span class="criticality high">High — Tier 1</span>
+      <h3>Query Endpoint (query.py)</h3>
+      <p>
+        The <strong>runtime orchestrator</strong> for every user question. Sequences embed → retrieve →
+        build prompt → generate → log. Measures end-to-end latency. Returns structured
+        <code>QueryResponse</code> with sources, token counts, and model info.
+      </p>
+      <div class="importance-bar">
+        <span class="label">Criticality</span>
+        <div class="track"><div class="fill" style="width:80%;background:var(--orange)"></div></div>
+      </div>
+      <div class="depends">
+        Depends on: <span>Embedder</span><span>Retriever</span><span>PromptBuilder</span><span>LLMClient</span><span>PostgreSQL</span>
+      </div>
+    </div>
+
+    <!-- Config / Settings -->
+    <div class="card infra">
+      <div class="icon">⚙️</div>
+      <span class="criticality medium">Medium — Tier 2</span>
+      <h3>Settings (config.py)</h3>
+      <p>
+        Central configuration via <code>pydantic-settings</code>. Loads from <code>.env</code>.
+        Controls DB URLs, Qdrant connection, model selection, chunk sizes, and feature flags
+        like <code>enable_reranker</code>. <strong>Every component reads from this.</strong>
+      </p>
+      <div class="importance-bar">
+        <span class="label">Criticality</span>
+        <div class="track"><div class="fill" style="width:60%;background:var(--accent)"></div></div>
+      </div>
+      <div class="depends">
+        Depends on: <span>.env file</span>
+      </div>
+    </div>
+
+    <!-- Dependencies (DI) -->
+    <div class="card infra">
+      <div class="icon">🔗</div>
+      <span class="criticality medium">Medium — Tier 2</span>
+      <h3>Dependency Injection (dependencies.py)</h3>
+      <p>
+        FastAPI DI wiring. Caches <code>Embedder</code> and <code>AsyncQdrantClient</code> as
+        singletons via <code>@lru_cache</code>. Creates fresh <code>Indexer</code> per request.
+        <strong>Ensures resources are shared efficiently</strong> across the async event loop.
+      </p>
+      <div class="importance-bar">
+        <span class="label">Criticality</span>
+        <div class="track"><div class="fill" style="width:50%;background:var(--accent)"></div></div>
+      </div>
+      <div class="depends">
+        Depends on: <span>Settings</span><span>FastAPI</span>
+      </div>
+    </div>
+
+    <!-- Feedback -->
+    <div class="card eval">
+      <div class="icon">💬</div>
+      <span class="criticality medium">Medium — Tier 2</span>
+      <h3>Feedback API (feedback.py)</h3>
+      <p>
+        Collects 👍/👎 ratings per query with optional comments and relevant chunk IDs.
+        This is the <strong>continuous improvement loop</strong> — feedback data feeds
+        evaluation and future retrieval tuning.
+      </p>
+      <div class="importance-bar">
+        <span class="label">Criticality</span>
+        <div class="track"><div class="fill" style="width:45%;background:var(--accent)"></div></div>
+      </div>
+      <div class="depends">
+        Depends on: <span>QueryLogs</span><span>PostgreSQL</span>
+      </div>
+    </div>
+
+    <!-- Jobs API -->
+    <div class="card infra">
+      <div class="icon">📋</div>
+      <span class="criticality support">Support — Tier 3</span>
+      <h3>Jobs API (jobs.py)</h3>
+      <p>
+        Polls document processing status (PENDING → PROCESSING → INDEXED → FAILED).
+        Lets the frontend show upload progress. <strong>Observability, not core logic.</strong>
+      </p>
+      <div class="importance-bar">
+        <span class="label">Criticality</span>
+        <div class="track"><div class="fill" style="width:30%;background:var(--text2)"></div></div>
+      </div>
+      <div class="depends">
+        Depends on: <span>PostgreSQL</span><span>Document model</span>
+      </div>
+    </div>
+
+    <!-- Planned: Hybrid Search -->
+    <div class="card retrieve" style="opacity:0.55">
+      <div class="icon">🔀</div>
+      <span class="criticality support">Planned — Not Yet Built</span>
+      <h3>Hybrid Search (hybrid_search.py)</h3>
+      <p>
+        Will combine dense (vector) + sparse (BM25) retrieval for better keyword matching.
+        Critical for exact phrases, names, and IDs that semantic search misses.
+      </p>
+      <div class="depends">
+        Depends on: <span>Qdrant sparse vectors</span><span>BM25</span>
+      </div>
+    </div>
+
+    <!-- Planned: Reranker -->
+    <div class="card retrieve" style="opacity:0.55">
+      <div class="icon">🎯</div>
+      <span class="criticality support">Planned — Not Yet Built</span>
+      <h3>Re-ranker (reranker.py)</h3>
+      <p>
+        Will apply a cross-encoder model to re-score top-K candidates.
+        Typically improves relevance by 10–15% over pure vector similarity.
+      </p>
+      <div class="depends">
+        Depends on: <span>cross-encoder model</span><span>Retriever</span>
+      </div>
+    </div>
+
+    <!-- Planned: RAGAS Eval -->
+    <div class="card eval" style="opacity:0.55">
+      <div class="icon">📊</div>
+      <span class="criticality support">Planned — Not Yet Built</span>
+      <h3>RAGAS Evaluation (ragas_eval.py)</h3>
+      <p>
+        Will measure faithfulness, answer relevancy, context precision, and context recall.
+        Target: faithfulness &gt; 0.80, relevancy &gt; 0.80.
+      </p>
+      <div class="depends">
+        Depends on: <span>RAGAS library</span><span>test queries</span>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════════ 3. INFRASTRUCTURE STACK ═══════════════ -->
+<section>
+  <h2 class="section-title">🏗️ Infrastructure &amp; Storage</h2>
+  <p class="section-desc">
+    Three databases, each with a distinct role. Understanding why each exists is key to
+    understanding the architecture.
+  </p>
+
+  <div class="two-col">
+    <div class="card infra">
+      <div class="icon">🐘</div>
+      <span class="criticality critical">Critical</span>
+      <h3>PostgreSQL</h3>
+      <p>
+        <strong>Source of truth for everything relational.</strong> Stores document registry
+        (filename, status, filepath), query logs (question, answer, tokens, latency),
+        and user feedback (ratings, comments, relevant chunks).
+      </p>
+      <p style="margin-top:10px">
+        <strong>Why not just Qdrant?</strong> Qdrant is optimized for vector search, not
+        relational queries, joins, or audit trails. PostgreSQL handles the "business logic"
+        data while Qdrant handles the "semantic" data.
+      </p>
+      <div class="depends">
+        Tables: <span>documents</span><span>query_logs</span><span>feedback</span><span>chunks</span>
+      </div>
+    </div>
+
+    <div class="card infra">
+      <div class="icon">🔮</div>
+      <span class="criticality critical">Critical</span>
+      <h3>Qdrant</h3>
+      <p>
+        <strong>Vector database — the heart of semantic search.</strong> Stores 3072-dimensional
+        embeddings with payload metadata (content, document_id, filename, chunk_index).
+        Uses HNSW approximate nearest neighbor for sub-10ms retrieval.
+      </p>
+      <p style="margin-top:10px">
+        <strong>Why Qdrant over Pinecone/Weaviate?</strong> Self-hostable, no vendor lock-in,
+        built-in hybrid search support, excellent async Python SDK, and metadata filtering
+        that lets you scope searches to specific documents.
+      </p>
+      <div class="depends">
+        Features: <span>HNSW</span><span>Cosine distance</span><span>Payload filtering</span>
+      </div>
+    </div>
+
+    <div class="card infra">
+      <div class="icon">⚡</div>
+      <span class="criticality high">High</span>
+      <h3>Redis</h3>
+      <p>
+        <strong>Celery message broker + future cache layer.</strong> Carries task messages
+        between FastAPI and Celery workers. Will also serve as a query cache to avoid
+        redundant LLM calls for identical questions.
+      </p>
+      <p style="margin-top:10px">
+        <strong>Why Redis?</strong> Battle-tested as a Celery broker, in-memory speed,
+        and dual-purpose: message queue + application cache in one deployment.
+      </p>
+      <div class="depends">
+        Roles: <span>Celery broker</span><span>Query cache</span><span>Rate limiting</span>
+      </div>
+    </div>
+
+    <div class="card infra">
+      <div class="icon">☁️</div>
+      <span class="criticality high">High</span>
+      <h3>OpenAI API</h3>
+      <p>
+        <strong>External AI provider for both embeddings and generation.</strong>
+        Embedding model: <code>text-embedding-3-large</code> (3072-dim).
+        Chat model: <code>gpt-4o-mini</code>. Both have retry logic with exponential backoff.
+      </p>
+      <p style="margin-top:10px">
+        <strong>Why OpenAI?</strong> Best quality/cost ratio for embeddings, excellent
+        instruction-following for cited answers, and 128K context window handles large
+        document contexts.
+      </p>
+      <div class="depends">
+        Models: <span>text-embedding-3-large</span><span>gpt-4o-mini</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ 4. CRITICALITY SUMMARY ═══════════════ -->
+<section>
+  <h2 class="section-title">📊 Criticality Heatmap</h2>
+  <p class="section-desc">
+    If a component fails, how much of the system is impacted? Sorted by blast radius.
+  </p>
+
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px;">
+    <div class="importance-bar">
+      <span class="label" style="width:140px">Indexer</span>
+      <div class="track"><div class="fill" style="width:100%;background:var(--red)"></div></div>
+      <span style="font-size:0.75rem;color:var(--red);width:80px;text-align:left">Tier 0</span>
+    </div>
+    <div class="importance-bar">
+      <span class="label" style="width:140px">Embedder</span>
+      <div class="track"><div class="fill" style="width:100%;background:var(--red)"></div></div>
+      <span style="font-size:0.75rem;color:var(--red);width:80px;text-align:left">Tier 0</span>
+    </div>
+    <div class="importance-bar">
+      <span class="label" style="width:140px">Retriever</span>
+      <div class="track"><div class="fill" style="width:100%;background:var(--red)"></div></div>
+      <span style="font-size:0.75rem;color:var(--red);width:80px;text-align:left">Tier 0</span>
+    </div>
+    <div class="importance-bar">
+      <span class="label" style="width:140px">Chunker</span>
+      <div class="track"><div class="fill" style="width:85%;background:var(--orange)"></div></div>
+      <span style="font-size:0.75rem;color:var(--orange);width:80px;text-align:left">Tier 1</span>
+    </div>
+    <div class="importance-bar">
+      <span class="label" style="width:140px">DocumentParser</span>
+      <div class="track"><div class="fill" style="width:85%;background:var(--orange)"></div></div>
+      <span style="font-size:0.75rem;color:var(--orange);width:80px;text-align:left">Tier 1</span>
+    </div>
+    <div class="importance-bar">
+      <span class="label" style="width:140px">LLMClient</span>
+      <div class="track"><div class="fill" style="width:80%;background:var(--orange)"></div></div>
+      <span style="font-size:0.75rem;color:var(--orange);width:80px;text-align:left">Tier 1</span>
+    </div>
+    <div class="importance-bar">
+      <span class="label" style="width:140px">PromptBuilder</span>
+      <div class="track"><div class="fill" style="width:75%;background:var(--orange)"></div></div>
+      <span style="font-size:0.75rem;color:var(--orange);width:80px;text-align:left">Tier 1</span>
+    </div>
+    <div class="importance-bar">
+      <span class="label" style="width:140px">IngestionPipeline</span>
+      <div class="track"><div class="fill" style="width:80%;background:var(--orange)"></div></div>
+      <span style="font-size:0.75rem;color:var(--orange);width:80px;text-align:left">Tier 1</span>
+    </div>
+    <div class="importance-bar">
+      <span class="label" style="width:140px">Query Endpoint</span>
+      <div class="track"><div class="fill" style="width:80%;background:var(--orange)"></div></div>
+      <span style="font-size:0.75rem;color:var(--orange);width:80px;text-align:left">Tier 1</span>
+    </div>
+    <div class="importance-bar">
+      <span class="label" style="width:140px">Settings</span>
+      <div class="track"><div class="fill" style="width:60%;background:var(--accent)"></div></div>
+      <span style="font-size:0.75rem;color:var(--accent);width:80px;text-align:left">Tier 2</span>
+    </div>
+    <div class="importance-bar">
+      <span class="label" style="width:140px">DI Wiring</span>
+      <div class="track"><div class="fill" style="width:50%;background:var(--accent)"></div></div>
+      <span style="font-size:0.75rem;color:var(--accent);width:80px;text-align:left">Tier 2</span>
+    </div>
+    <div class="importance-bar">
+      <span class="label" style="width:140px">Feedback API</span>
+      <div class="track"><div class="fill" style="width:45%;background:var(--accent)"></div></div>
+      <span style="font-size:0.75rem;color:var(--accent);width:80px;text-align:left">Tier 2</span>
+    </div>
+    <div class="importance-bar">
+      <span class="label" style="width:140px">Jobs API</span>
+      <div class="track"><div class="fill" style="width:30%;background:var(--text2)"></div></div>
+      <span style="font-size:0.75rem;color:var(--text2);width:80px;text-align:left">Tier 3</span>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:24px;margin-top:24px;flex-wrap:wrap;">
+    <div style="flex:1;min-width:200px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;">
+      <div style="font-weight:700;color:var(--red);margin-bottom:6px;">🔴 Tier 0 — Critical Path</div>
+      <p style="font-size:0.85rem;color:var(--text2);">
+        <strong>Indexer, Embedder, Retriever.</strong> If any of these fail, the system
+        cannot answer queries. These are the non-negotiable core of RAG.
+      </p>
+    </div>
+    <div style="flex:1;min-width:200px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;">
+      <div style="font-weight:700;color:var(--orange);margin-bottom:6px;">🟠 Tier 1 — Quality Path</div>
+      <p style="font-size:0.85rem;color:var(--text2);">
+        <strong>Parser, Chunker, LLMClient, PromptBuilder, Pipeline, Query API.</strong>
+        System still runs without them, but answer quality degrades severely.
+      </p>
+    </div>
+    <div style="flex:1;min-width:200px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;">
+      <div style="font-weight:700;color:var(--accent);margin-bottom:6px;">🔵 Tier 2 — Support Layer</div>
+      <p style="font-size:0.85rem;color:var(--text2);">
+        <strong>Settings, DI, Feedback.</strong> Configuration, wiring, and improvement loops.
+        Important for operations but not for real-time query serving.
+      </p>
+    </div>
+    <div style="flex:1;min-width:200px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;">
+      <div style="font-weight:700;color:var(--text2);margin-bottom:6px;">⚪ Tier 3 — Observability</div>
+      <p style="font-size:0.85rem;color:var(--text2);">
+        <strong>Jobs API, planned components.</strong> Nice-to-have for monitoring and
+        future enhancements. Not needed for core functionality.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ 5. KEY INSIGHTS ═══════════════ -->
+<section>
+  <h2 class="section-title">💡 Architectural Insights</h2>
+  <div class="cards">
+    <div class="card ingest">
+      <div class="icon">1️⃣</div>
+      <h3>The Embedder is Used Twice</h3>
+      <p>
+        The <strong>same Embedder</strong> creates vectors during ingestion AND during query time.
+        This is critical: if you used different embedding models for documents vs. queries,
+        the vector spaces wouldn't align and retrieval would return garbage. The
+        <code>dependencies.py</code> singleton ensures consistency.
+      </p>
+    </div>
+    <div class="card retrieve">
+      <div class="icon">2️⃣</div>
+      <h3>Indexer is the Shared Backbone</h3>
+      <p>
+        The <strong>Indexer</strong> is the only component used by BOTH pipelines.
+        Ingestion writes through it; retrieval reads through it. It's the
+        <em>single shared dependency</em> between the two halves of the system.
+        This is why it's Tier 0.
+      </p>
+    </div>
+    <div class="card generate">
+      <div class="icon">3️⃣</div>
+      <h3>Citations Happen in the Prompt, Not the Model</h3>
+      <p>
+        CiteRAG doesn't rely on the LLM to magically cite sources. The
+        <strong>PromptBuilder</strong> explicitly numbers every chunk <code>[1], [2], ...</code>
+        and the system prompt <em>demands</em> citations. This is a design choice:
+        structural guarantees over model hope.
+      </p>
+    </div>
+    <div class="card eval">
+      <div class="icon">4️⃣</div>
+      <h3>Feedback Closes the Loop</h3>
+      <p>
+        Every query is logged with full traceability (tokens, latency, model).
+        User feedback (👍/👎 + relevant chunk IDs) is stored and linked to query logs.
+        This data is the foundation for future retrieval tuning and evaluation.
+      </p>
+    </div>
+    <div class="card infra">
+      <div class="icon">5️⃣</div>
+      <h3>Celery Bridges Sync/Async Worlds</h3>
+      <p>
+        FastAPI is fully async, but Celery workers are synchronous. The
+        <code>IngestionPipeline.run()</code> is async, and the Celery task wraps it with
+        <code>asyncio.run()</code>. This pattern keeps the event loop free during uploads
+        while still using Celery's battle-tested retry/monitoring.
+      </p>
+    </div>
+    <div class="card retrieve">
+      <div class="icon">6️⃣</div>
+      <h3>Three Empty Files = The Roadmap</h3>
+      <p>
+        <code>hybrid_search.py</code>, <code>reranker.py</code>, and <code>query_expander.py</code>
+        are stubbed out but empty. These represent the <strong>retrieval quality roadmap</strong>:
+        hybrid (dense+sparse) → rerank → expand. Each one incrementally improves recall and precision.
+      </p>
+    </div>
+  </div>
+</section>
+
+</div>
+
+<div class="footer">
+  CiteRAG v0.1.0 — Production-Grade RAG Document System — Architecture Visualization
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>
+  (async function() {
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: 'dark',
+      themeVariables: {
+        primaryColor: '#1a2340',
+        primaryTextColor: '#e2e8f0',
+        primaryBorderColor: '#243050',
+        lineColor: '#60a5fa',
+        secondaryColor: '#131a2b',
+        tertiaryColor: '#0b0f19',
+      },
+      flowchart: { useMaxWidth: true, htmlLabels: true, curve: 'basis' }
+    });
+
+    // Show all panels so Mermaid can measure them
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('active'));
+
+    // Render all diagrams
+    const diagrams = document.querySelectorAll('.mermaid');
+    for (const el of diagrams) {
+      try {
+        const id = 'mermaid-' + Math.random().toString(36).slice(2, 8);
+        const { svg } = await mermaid.render(id, el.textContent);
+        el.innerHTML = svg;
+      } catch (e) {
+        console.error('Mermaid render error:', e);
+        el.innerHTML = '<p style="color:#f87171;padding:16px;">Diagram render error</p>';
+      }
+    }
+
+    // Hide all except the first (ingestion)
+    document.querySelectorAll('.tab-panel').forEach((p, i) => {
+      if (i !== 0) p.classList.remove('active');
+    });
+  })();
+
+  function switchTab(name) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    event.target.classList.add('active');
+  }
+</script>
+</body>
+</html>
