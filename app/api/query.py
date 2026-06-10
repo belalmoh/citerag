@@ -10,6 +10,7 @@ from app.core.models import QueryLogs
 from app.generation.llm_client import LLMClient
 from app.generation.prompt_builder import PromptBuilder
 from app.ingestion.embedder import Embedder
+from app.retrieval.reranker import Reranker
 from app.retrieval.retriever import Retriever
 from app.ingestion.indexer import Indexer
 
@@ -47,18 +48,22 @@ async def query_documents(
     
     # 2. Retrieving from Qdrant
     retriever = Retriever(indexer)
-    chunks = await retriever.search(query_vec, top_k=body.top_k)
 
-    # 3. Building the prompt for the LLM
+    # 3. Rerank
+    chunks = await retriever.search(query_vec, top_k=body.top_k)
+    reranker = Reranker()
+    chunks = await reranker.rerank(query=body.query, chunks=chunks, top_k=body.top_k)
+
+    # 4. Building the prompt for the LLM
     prompt = PromptBuilder().build(question=body.query, chunks=chunks)
 
-    # 4. Querying the LLM
+    # 5. Querying the LLM
     llm = LLMClient()
     result = await llm.generate(user_message=prompt.user, system_prompt=prompt.system)
 
     latency = int((time.monotonic() - start) * 1000)
 
-    # 5. Log to DB
+    # 6. Log to DB
     log = QueryLogs(
         query_text=body.query,
         response_text=result.text,
