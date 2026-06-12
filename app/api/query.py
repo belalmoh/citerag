@@ -1,6 +1,7 @@
 import time
 
 from fastapi import APIRouter, Depends
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,6 +10,7 @@ from app.core.dependencies import get_embedder, get_indexer
 from app.core.models import QueryLogs
 from app.generation.llm_client import LLMClient
 from app.generation.prompt_builder import PromptBuilder
+from app.generation.stream_handler import generate_rag_stream
 from app.ingestion.embedder import Embedder
 from app.retrieval.reranker import Reranker
 from app.retrieval.retriever import Retriever
@@ -91,4 +93,20 @@ async def query_documents(
         model_used=result.model,
         prompt_tokens=result.prompt_tokens,
         completion_tokens=result.completion_tokens
+    )
+
+@router.post("/stream")
+async def stream_query(
+    body: QueryRequest, 
+    db: AsyncSession = Depends(get_db), 
+    embedder: Embedder = Depends(get_embedder), 
+    indexer: Indexer = Depends(get_indexer)
+):
+    [query_vec] = await embedder.embed([body.query])
+    retriever = Retriever(indexer)
+    chunks = await retriever.search(query_vec, top_k=body.top_k)
+    prompt = PromptBuilder().build(question=body.query, chunks=chunks)
+    llm = LLMClient()
+    return StreamingResponse(
+        generate_rag_stream(llm=llm, prompt=prompt, chunks=chunks, query=body.query, db=db),
     )

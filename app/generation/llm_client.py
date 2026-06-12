@@ -1,5 +1,6 @@
 
 import asyncio
+from collections.abc import AsyncGenerator
 import logging
 
 from openai import APIError, AsyncOpenAI, RateLimitError
@@ -68,3 +69,30 @@ class LLMClient:
                 raise e
 
         raise Exception("Failed to generate response after multiple attempts due to rate limits.")
+    
+    async def generate_stream(self, user_message: str, system_prompt: str, temperature: float = 0.7, max_tokens: int = 1024) -> AsyncGenerator[dict, None]:
+        system_prompt = system_prompt or self.default_system_prompt
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_message},
+        ]
+
+        response = await self._client.chat.completions.create(
+            model=self.model,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            stream=True,
+            stream_options={"include_usage": True},
+        )
+
+        async for chunk in response:
+            if chunk.choices:
+                delta = chunk.choices[0].delta
+                if delta.content:
+                    yield {"token": delta.content}
+            else:
+                usage = chunk.usage
+                yield {"usage": {"prompt_tokens": usage.prompt_tokens,"completion_tokens": usage.completion_tokens},
+                    "model": self.model,
+                }
