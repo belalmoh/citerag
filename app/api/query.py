@@ -12,6 +12,7 @@ from app.generation.llm_client import LLMClient
 from app.generation.prompt_builder import PromptBuilder
 from app.generation.stream_handler import generate_rag_stream
 from app.ingestion.embedder import Embedder
+from app.retrieval.hybrid_search import HybridRetriever
 from app.retrieval.reranker import Reranker
 from app.retrieval.retriever import Retriever
 from app.ingestion.indexer import Indexer
@@ -49,10 +50,10 @@ async def query_documents(
     [query_vec] = await embedder.embed([body.query])
     
     # 2. Retrieving from Qdrant
-    retriever = Retriever(indexer)
+    hybrid = HybridRetriever(indexer)
 
     # 3. Rerank
-    chunks = await retriever.search(query_vec, top_k=body.top_k)
+    chunks = await hybrid.search(query_vector=query_vec, query_text=body.query, top_k=body.top_k)
     reranker = Reranker()
     chunks = await reranker.rerank(query=body.query, chunks=chunks, top_k=body.top_k)
 
@@ -103,8 +104,8 @@ async def stream_query(
     indexer: Indexer = Depends(get_indexer)
 ):
     [query_vec] = await embedder.embed([body.query])
-    retriever = Retriever(indexer)
-    chunks = await retriever.search(query_vec, top_k=body.top_k)
+    hybrid = HybridRetriever(indexer)
+    chunks = await hybrid.search(query_vector=query_vec, query_text=body.query, top_k=body.top_k)
     prompt = PromptBuilder().build(question=body.query, chunks=chunks)
     llm = LLMClient()
     return StreamingResponse(

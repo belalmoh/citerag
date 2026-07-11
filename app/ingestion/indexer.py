@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 from uuid import UUID, uuid5
-from typing import Sequence
 
 from qdrant_client import AsyncQdrantClient, models
 from qdrant_client.http.exceptions import UnexpectedResponse
@@ -31,9 +30,15 @@ class Indexer:
                     distance=Distance(distance),
                 ),
             )
+            await self._client.create_payload_index(
+                collection_name=self._collection_name,
+                field_name="content",
+                field_schema=models.PayloadSchemaType.TEXT)
             logger.info(
                 "Created Qdrant collection %s (dim=%d, distance=%s)",
-                self._collection_name, dimension, distance,
+                self._collection_name,
+                dimension,
+                distance,
             )
 
     async def upsert_chunks(
@@ -46,7 +51,10 @@ class Indexer:
             raise ValueError("chunks and embeddings length mismatch")
         if not chunks:
             return []
-        vector_ids = [str(uuid5(UUID(chunk.metadata["document_id"]), str(chunk.index))) for chunk in chunks]
+        vector_ids = [
+            str(uuid5(UUID(chunk.metadata["document_id"]), str(chunk.index)))
+            for chunk in chunks
+        ]
         await self._client.upsert(
             collection_name=self._collection_name,
             points=[
