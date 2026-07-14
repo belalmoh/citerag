@@ -38,6 +38,8 @@ class Settings(BaseSettings):
     reranker_top_k: int = 20
     enable_reranker: bool = True
 
+    reranker_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+
 
 _settings: Settings | None = None
 

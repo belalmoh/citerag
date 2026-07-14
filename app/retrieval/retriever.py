@@ -31,6 +31,7 @@ class Retriever:
                 hnsw_ef=128,
                 exact=False,
             ),
+            using="dense"
         )
 
         results = response.points
